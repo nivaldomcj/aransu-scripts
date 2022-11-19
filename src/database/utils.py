@@ -1,6 +1,6 @@
 from pyodbc import Cursor
 
-from database.models import TableColumnsInfo
+from database.models import TableColumnsInfo, ProcedureParamsInfo
 
 
 def get_databases(cursor: Cursor) -> list[str]:
@@ -21,7 +21,8 @@ def get_tables(cursor: Cursor) -> list[str]:
     return [e[0] for e in cursor.fetchall()] if cursor.rowcount else []
 
 
-def get_columns(cursor: Cursor, table_name: str) -> list[TableColumnsInfo]:
+def get_table_columns(cursor: Cursor, 
+                      table_name: str) -> list[TableColumnsInfo]:
     query: str = """
         SELECT
             C.ORDINAL_POSITION						AS id,
@@ -44,5 +45,34 @@ def get_columns(cursor: Cursor, table_name: str) -> list[TableColumnsInfo]:
     cursor.execute(query)
     return [
         TableColumnsInfo(e[1], e[2], e[3])
+        for e in cursor.fetchall()
+    ] if cursor.rowcount else []
+
+
+def get_procedures(cursor: Cursor) -> list[str]:
+    query: str = "SELECT name FROM sys.Procedures"
+
+    cursor.execute(query)
+    return [e[0] for e in cursor.fetchall()] if cursor.rowcount else []
+
+
+def get_procedure_params(cursor: Cursor, 
+                         procedure_name: str) -> list[ProcedureParamsInfo]:
+    query: str = """
+        SELECT
+            E.parameter_id				AS id,
+            E.name						AS parameter_name,
+            type_name(E.user_type_id)	AS data_type
+        FROM
+            sys.parameters AS E
+        WHERE
+            E.object_id = object_id('{0}')
+        ORDER BY
+            E.parameter_id ASC
+    """.format(procedure_name)
+
+    cursor.execute(query)
+    return [
+        ProcedureParamsInfo(e[1], e[2])
         for e in cursor.fetchall()
     ] if cursor.rowcount else []

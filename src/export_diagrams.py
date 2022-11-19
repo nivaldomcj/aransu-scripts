@@ -1,5 +1,5 @@
 from database.connections import connect
-from database.utils import get_columns
+from database.utils import get_procedure_params
 
 
 
@@ -7,8 +7,8 @@ from database.utils import get_columns
 def main():
     connection = connect('LimitDb')
     cursor = connection.cursor()
-    cols = get_columns(cursor, 'LimitExceptions')
-    print(cols)
+    x = get_procedure_params(cursor, 'p_GetPurchaseStatisticsByUserIdAndPaymentTypeCore')
+    print(x)
 
 
 if __name__ == '__main__':
