@@ -1,6 +1,6 @@
 from pyodbc import Cursor
 
-from modules.models import TableColumnsInfo, ProcedureParamsInfo
+from shared.models import TableColumnsInfo, ProcedureParamsInfo
 
 
 def get_databases(cursor: Cursor) -> list[str]:
@@ -9,7 +9,6 @@ def get_databases(cursor: Cursor) -> list[str]:
         FROM	master.sys.databases
         WHERE	name NOT IN ('master', 'tempdb', 'model', 'msdb')
     """
-
     cursor.execute(query)
     return [e[0] for e in cursor.fetchall()] if cursor.rowcount else []
 
@@ -37,12 +36,11 @@ def get_table_columns(cursor: Cursor,
             INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K
                 ON C.TABLE_NAME = K.TABLE_NAME
         WHERE
-            C.TABLE_NAME = '{0}'
+            C.TABLE_NAME = ?
         ORDER BY 
             C.ORDINAL_POSITION ASC
-    """.format(table_name)
-
-    cursor.execute(query)
+    """
+    cursor.execute(query, table_name)
     return [
         TableColumnsInfo(e[1], e[2], e[3])
         for e in cursor.fetchall()
@@ -51,7 +49,6 @@ def get_table_columns(cursor: Cursor,
 
 def get_procedures(cursor: Cursor) -> list[str]:
     query: str = "SELECT name FROM sys.Procedures"
-
     cursor.execute(query)
     return [e[0] for e in cursor.fetchall()] if cursor.rowcount else []
 
@@ -66,12 +63,11 @@ def get_procedure_params(cursor: Cursor,
         FROM
             sys.parameters AS E
         WHERE
-            E.object_id = object_id('{0}')
+            E.object_id = object_id(?)
         ORDER BY
             E.parameter_id ASC
-    """.format(procedure_name)
-
-    cursor.execute(query)
+    """
+    cursor.execute(query, procedure_name)
     return [
         ProcedureParamsInfo(e[1], e[2])
         for e in cursor.fetchall()
