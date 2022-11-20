@@ -1,6 +1,6 @@
 from pyodbc import Cursor
 
-from databases.repositories.models import TableColumnsInfo, ProcedureParamsInfo
+from modules.models import TableColumnsInfo, ProcedureParamsInfo
 
 
 def get_databases(cursor: Cursor) -> list[str]:
