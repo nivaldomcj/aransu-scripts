@@ -10,6 +10,7 @@ class TableColumnsInfo:
     def __str__(self) -> str:
         return self.column_name
 
+
 class ProcedureParamsInfo:
     def __init__(self, parameter_name: str, data_type: str):
         self.parameter_name: str = parameter_name

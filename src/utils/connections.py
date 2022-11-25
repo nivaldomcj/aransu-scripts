@@ -3,7 +3,7 @@ from pyodbc import Connection, connect
 DRIVER_NAME: str = r'{ODBC Driver 17 for SQL Server}'
 
 
-def connect_winauth(server_name: str, 
+def connect_winauth(server_name: str,
                     database_name: str) -> Connection:
     connstring: str = (
         f'Driver={DRIVER_NAME};'

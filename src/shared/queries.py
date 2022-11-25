@@ -1,6 +1,6 @@
 from pyodbc import Cursor
 
-from shared.models import TableColumnsInfo, ProcedureParamsInfo
+from shared.models import ProcedureParamsInfo, TableColumnsInfo
 
 
 def get_databases(cursor: Cursor) -> list[str]:
