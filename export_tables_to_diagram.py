@@ -1,9 +1,4 @@
-"""
-Export tables from SQL Server to DBML format,
-attempting to unite all foreign key candidates.
-
-Creates Table objects and Refs objects complying with DBML format.
-"""
+from argparse import ArgumentParser
 import pyodbc
 
 CONN_STR = """
@@ -56,6 +51,10 @@ class Table:
 
     def get_special_columns(self):
         return list(filter(lambda x: x.is_pk or x.is_fk(), self.columns))
+
+    def contains_column(self, column_name):
+        fun = lambda x: x.column_name.lower() == column_name.lower()
+        return any(filter(fun, self.columns))
 
     def get_dbml(self):
         title = 'Table {}.{}'.format(self.database_name, self.table_name)
@@ -144,39 +143,47 @@ class TablesExtractor:
                 cursor.execute(get_table_columns_query, table_name)
                 return [Column(r[0], r[1], r[2]) for r in cursor.fetchall()]
 
-    def get_table_definitions(self):
+    def get_table_definitions(self, column_name_filter):
         tables = []
-
         for database_name in self.__get_databases():
             with pyodbc.connect(CONN_STR.format(database_name)) as connection:
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT DISTINCT name FROM sys.Tables")
                     for row in cursor.fetchall():
-                        tables.append(Table(
+                        table = Table(
                             database_name=database_name,
                             table_name=row[0],
                             columns=self.__get_table_columns(
                                 database_name, row[0])
-                        ))
-
+                        )
+                        if column_name_filter:
+                            if not table.contains_column(column_name_filter):
+                                continue
+                        tables.append(table)
         return tables
 
-    def get_table_references(self, tables):
+    def get_table_references(self, tables_list, column_name_filter):
         references = {}
 
         # 1st scan, to find and set initial references
-        for table in tables:
+        for table in tables_list:
             for column in table.get_special_columns():
                 key = column.column_name.lower()
                 if key in references and not column.is_pk:
                     continue
+                if column_name_filter:
+                    if key != column_name_filter.lower():
+                        continue
                 references[key] = Ref(
                     table.database_name, table.table_name, column.column_name)
 
         # 2nd scan, to link initial references with secondary ones
-        for table in tables:
+        for table in tables_list:
             for column in table.get_special_columns():
                 key = column.column_name.lower()
+                if column_name_filter:
+                    if key != column_name_filter.lower():
+                        continue
                 references[key].add(
                     table.database_name, table.table_name, column.column_name)
 
@@ -204,14 +211,23 @@ class DbmlExporter:
             file.write('\n')
 
 
-def main():
-    e = TablesExtractor()
-    t = e.get_table_definitions()
-    r = e.get_table_references(t)
+def main(args):
+    column_name = args.column_name if args.column_name else None
 
-    d = DbmlExporter(t, r)
-    d.export('output.txt')
+    extractor = TablesExtractor()
+
+    tables = extractor.get_table_definitions(column_name)
+    references = extractor.get_table_references(tables, column_name)
+
+    exporter = DbmlExporter(tables, references)
+    exporter.export(
+        '{}.txt'.format(column_name) if column_name else 'output.txt')
 
 
 if __name__ == '__main__':
-    main()
+    parser = ArgumentParser(
+        prog='export_tables_to_diagram',
+        description='Export tables from MSSQL server to DBML format'
+    )
+    parser.add_argument('-c', '--column_name')
+    main(parser.parse_args())
